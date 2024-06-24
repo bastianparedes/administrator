@@ -1,17 +1,14 @@
 {
   "name": "administrator",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "ts-node script.ts",
-    "start": "node dist/script.js",
+    "build": "tsc",
+    "start": "node .",
+    "dev": "npm run build --silent -- --outDir . && node index.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.14.8",
@@ -26,5 +23,6 @@
   "dependencies": {
     "chalk": "^5.3.0",
     "inquirer": "^9.2.23"
-  }
+  },
+  "type": "module"
 }
