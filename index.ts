@@ -3,7 +3,7 @@
 import fs from 'fs';
 import YAML from 'yaml';
 import blessed from 'blessed';
-import { spawn, ChildProcess } from 'child_process';
+import { spawn } from 'child_process';
 import { program } from 'commander';
 
 type Workspaces = {
@@ -24,7 +24,7 @@ const runCommands = (
     path: string;
   }[]
 ) => {
-  const processes: ChildProcess[] = commandsData.map((commandData) =>
+  const processes = commandsData.map((commandData) =>
     spawn(
       commandData.command.split(' ')[0],
       commandData.command.split(' ').slice(1),
@@ -184,10 +184,10 @@ const getCommandsData = (taskName: string) => {
         (task) => task[taskName] !== undefined
       );
       if (task === undefined) return;
-      const script = task[taskName];
+      const command = task[taskName];
       return {
         name: workspaceName,
-        command: script as string,
+        command: command as string,
         path: path as string
       };
     })
