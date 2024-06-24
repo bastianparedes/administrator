@@ -5,6 +5,7 @@ import YAML from 'yaml';
 import blessed from 'blessed';
 import { spawn } from 'child_process';
 import { program } from 'commander';
+import treeKill from 'tree-kill';
 
 type Workspaces = {
   [key: string]:
@@ -144,19 +145,15 @@ const runCommands = (
   });
 
   const handleExit = async () => {
-    // Detener todos los procesos hijos con SIGTERM
-    processes.forEach((proc) => {
-      proc.kill('SIGTERM');
+    processes.forEach((procInfo) => {
+      if (procInfo.pid === undefined) return;
+      treeKill(procInfo.pid, 'SIGTERM');
+      treeKill(procInfo.pid, 'SIGKILL');
     });
 
-    // Esperar a que todos los procesos terminen
-    Promise.all(
-      processes.map(
-        (proc) => new Promise((resolve) => proc.on('exit', resolve))
-      )
-    );
-
-    process.exit(0);
+    setTimeout(() => {
+      process.exit(); // Exit the program
+    }, 100); // Wait for 5 seconds before forcing termination
   };
 
   // Manejar la señal de interrupción (C-c)
