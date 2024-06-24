@@ -5,7 +5,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node .",
-    "dev": "npm run build --silent -- --outDir . && node index.js",
+    "dev": "npm run build --silent && npm run start --silent",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
@@ -21,8 +21,10 @@
     "typescript-eslint": "^7.13.1"
   },
   "dependencies": {
+    "blessed": "^0.1.81",
     "chalk": "^5.3.0",
-    "inquirer": "^9.2.23"
+    "inquirer": "^9.2.23",
+    "yaml": "^2.4.5"
   },
   "type": "module"
 }
