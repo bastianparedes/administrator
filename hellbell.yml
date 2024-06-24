@@ -8,5 +8,5 @@ workspaces:
   frontend:
     path: ./apps/frontend
     tasks:
-      - test_1: node index.js
+      - test_1: npm run start
       - test_2: npm run start

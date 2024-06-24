@@ -85,14 +85,15 @@ const runCommands = (
     scrollable: true,
     keys: true,
     vi: true,
-    mouse: true
+    mouse: true,
+    tags: true // Habilita el procesamiento de etiquetas de estilo
   });
 
   let currentProcessIndex = 0;
   const logBuffers = processes.map(() => '');
 
   const handleProcessOutput = (data: Buffer, index: number) => {
-    logBuffers[index] += data.toString();
+    logBuffers[index] += data;
     if (index === currentProcessIndex) {
       logBox.setContent(logBuffers[index]);
       logBox.setScrollPerc(100);
@@ -142,7 +143,27 @@ const runCommands = (
     }
   });
 
-  screen.key(['q', 'C-c'], () => process.exit(0));
+  const handleExit = async () => {
+    // Detener todos los procesos hijos con SIGTERM
+    processes.forEach((proc) => {
+      proc.kill('SIGTERM');
+    });
+
+    // Esperar a que todos los procesos terminen
+    Promise.all(
+      processes.map(
+        (proc) => new Promise((resolve) => proc.on('exit', resolve))
+      )
+    );
+
+    process.exit(0);
+  };
+
+  // Manejar la señal de interrupción (C-c)
+  process.on('SIGINT', handleExit);
+
+  // Manejar la tecla 'q'
+  screen.key(['q', 'C-c'], handleExit);
 
   // Establecer foco inicial en commandList
   commandList.focus();

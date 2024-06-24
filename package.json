@@ -5,7 +5,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node .",
-    "dev": "npm run build --silent && hellbell",
+    "dev": "npm run build --silent && hellbell run test_1",
+    "test": "npm run build --silent && hellbell run test_2",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
