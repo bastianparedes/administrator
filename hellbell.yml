@@ -1,0 +1,12 @@
+workspaces:
+
+  backend:
+    path: ./apps/backend
+    tasks:
+      - test_1: python index.py
+
+  frontend:
+    path: ./apps/frontend
+    tasks:
+      - test_1: node index.js
+      - test_2: npm run start

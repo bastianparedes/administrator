@@ -1,105 +1,189 @@
-/* // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import chalk from 'chalk';
-import inquirer from 'inquirer';
+#!/usr/bin/env node
+
 import fs from 'fs';
 import YAML from 'yaml';
-import { spawn } from 'child_process';
-import readline from 'readline';
+import blessed from 'blessed';
+import { spawn, ChildProcess } from 'child_process';
+import { program } from 'commander';
 
-const promptMainMenu = () => {
-  const file = fs.readFileSync('./workspaces.yml', 'utf8');
-  const yml = YAML.parse(file);
+type Workspaces = {
+  [key: string]:
+    | undefined
+    | {
+        path: string;
+        tasks: {
+          [key: string]: undefined | string;
+        }[];
+      };
+};
 
-  const workspacesArray = Object.keys(yml.workspaces);
-  const [firstworkspaceName, ...otherWorkspaceNames] = workspacesArray;
-
-  // Si no hay worspaces
-  if (firstworkspaceName === undefined) throw 'No hay workspace';
-
-  for (let otherWorkspaceName of otherWorkspaceNames) {
-    const workspace = yml.workspaces[otherWorkspaceName];
-
-  }
-  // revisar que los workspaces tienen los mismos scripts
-  // const sameScripts
-
-  console.log(yml.workspaces.backend.scripts);
-  const options = ['View All Loans', 'Update Loan', 'Add a new loan', 'Exit'];
-  inquirer
-    .prompt([
+const runCommands = (
+  commandsData: {
+    name: string;
+    command: string;
+    path: string;
+  }[]
+) => {
+  const processes: ChildProcess[] = commandsData.map((commandData) =>
+    spawn(
+      commandData.command.split(' ')[0],
+      commandData.command.split(' ').slice(1),
       {
-        type: 'list',
-        name: 'choice',
-        message: 'What would you like to do?',
-        choices: options
+        cwd: commandData.path
       }
-    ])
+    )
+  );
 
-    .then((choices) => {
-      const index = options.indexOf(choices.choice);
-      if (index === -1) return console.log('Option not available');
+  const screen = blessed.screen({
+    smartCSR: true
+  });
 
-      console.log(`Option chosen is ${index}`);
-    });
+  screen.title = 'Hellbell';
+
+  const commandList = blessed.list({
+    parent: screen,
+    width: '20%',
+    height: '100%',
+    keys: true,
+    vi: true,
+    label: 'Commands',
+    border: {
+      type: 'line'
+    },
+    style: {
+      selected: {
+        bg: 'blue'
+      }
+    }
+  });
+
+  commandsData.forEach((commandData) => commandList.addItem(commandData.name));
+
+  const logBox = blessed.box({
+    parent: screen,
+    width: '80%',
+    height: '100%',
+    left: '20%',
+    label: 'Logs',
+    border: {
+      type: 'line'
+    },
+    style: {
+      fg: 'white',
+      bg: 'black'
+    },
+    scrollbar: {
+      ch: ' ',
+      track: {
+        bg: 'grey'
+      },
+      style: {
+        inverse: true
+      }
+    },
+    alwaysScroll: true,
+    scrollable: true,
+    keys: true,
+    vi: true,
+    mouse: true
+  });
+
+  let currentProcessIndex = 0;
+  const logBuffers = processes.map(() => '');
+
+  const handleProcessOutput = (data: Buffer, index: number) => {
+    logBuffers[index] += data.toString();
+    if (index === currentProcessIndex) {
+      logBox.setContent(logBuffers[index]);
+      logBox.setScrollPerc(100);
+      screen.render();
+    }
+  };
+
+  processes.forEach((proc, index) => {
+    proc.stdout?.on('data', (data: Buffer) => handleProcessOutput(data, index));
+    proc.stderr?.on('data', (data: Buffer) => handleProcessOutput(data, index));
+  });
+
+  const updateLogs = (index: number) => {
+    currentProcessIndex = index;
+    logBox.setContent(logBuffers[index]);
+    logBox.setScrollPerc(100);
+    screen.render();
+  };
+
+  commandList.select(0);
+  updateLogs(0);
+
+  commandList.on('select item', (_, index) => {
+    updateLogs(index);
+  });
+
+  // Hacer clic en el cuadro de comandos vuelve a enfocar la lista
+  commandList.on('focus', () => {
+    commandList.style.border.fg = 'blue';
+    logBox.style.border.fg = 'default';
+    screen.render();
+  });
+
+  // Hacer clic en el cuadro de logs enfoca el cuadro de logs
+  logBox.on('focus', () => {
+    commandList.style.border.fg = 'default';
+    logBox.style.border.fg = 'blue';
+    screen.render();
+  });
+
+  // Cambiar foco con las flechas izquierda y derecha
+  screen.key(['left', 'right'], (ch, key) => {
+    if (key.name === 'left') {
+      commandList.focus();
+    } else if (key.name === 'right') {
+      logBox.focus();
+    }
+  });
+
+  screen.key(['q', 'C-c'], () => process.exit(0));
+
+  // Establecer foco inicial en commandList
+  commandList.focus();
+
+  screen.render();
 };
-promptMainMenu();
 
-// { YAML:
-//   [ 'A human-readable data serialization language',
-//     'https://en.wikipedia.org/wiki/YAML' ],
-//   yaml:
-//   [ 'A complete JavaScript implementation',
-//     'https://www.npmjs.com/package/yaml' ] }
+const getCommandsData = (taskName: string) => {
+  const file = fs.readFileSync('./hellbell.yml', 'utf8');
+  const yml = YAML.parse(file);
+  const workspaces: Workspaces = yml.workspaces;
 
-type Workspace = {
-  path: string;
-  scripts: {
-    [key: string]: string;
+  const workspaceNames = Object.keys(workspaces);
+  const data = workspaceNames
+    .map((workspaceName) => {
+      const path = workspaces[workspaceName]?.path;
+      const task = workspaces[workspaceName]?.tasks.find(
+        (task) => task[taskName] !== undefined
+      );
+      if (task === undefined) return;
+      const script = task[taskName];
+      return {
+        name: workspaceName,
+        command: script as string,
+        path: path as string
+      };
+    })
+    .filter((script) => script !== undefined) as {
+    name: string;
+    command: string;
+    path: string;
   }[];
+  return data;
 };
- */
 
-import { spawn } from 'child_process';
-import readline from 'readline';
+program
+  .command('run <task>')
+  .description('Ejecuta una acción específica')
+  .action((task) => {
+    const commandsData = getCommandsData(task);
+    runCommands(commandsData);
+  });
 
-// Configurar readline para escuchar entradas del teclado
-readline.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
-
-// Ejecutar el comando en la terminal
-const command = 'node borrar.js'; // Reemplaza 'your_command_here' con el comando que deseas ejecutar
-const commandProcess = spawn(command, [], { shell: true });
-
-// Variable para controlar si se muestran los mensajes
-let showOutput = true;
-
-// Manejar las entradas del teclado
-process.stdin.on('keypress', (str, key) => {
-  if (key.name === 'up') {
-    showOutput = true;
-  } else if (key.name === 'down') {
-    showOutput = false;
-  } else if (key.ctrl && key.name === 'c') {
-    process.exit();
-  }
-});
-
-// Manejar la salida del comando
-commandProcess.stdout.on('data', (data) => {
-  if (showOutput) {
-    process.stdout.write(data);
-  }
-});
-
-// Manejar la salida de errores del comando
-commandProcess.stderr.on('data', (data) => {
-  if (showOutput) {
-    process.stderr.write(data);
-  }
-});
-
-// Manejar la finalización del comando
-commandProcess.on('close', (code) => {
-  console.log(`El comando terminó con el código ${code}`);
-  process.exit();
-});
+program.parse(process.argv);

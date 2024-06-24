@@ -5,11 +5,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node .",
-    "dev": "npm run build --silent && npm run start --silent",
+    "dev": "npm run build --silent && hellbell",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
+    "@types/blessed": "^0.1.25",
     "@types/inquirer": "^9.0.7",
     "@types/node": "^20.14.8",
     "eslint": "^8.57.0",
@@ -23,8 +24,12 @@
   "dependencies": {
     "blessed": "^0.1.81",
     "chalk": "^5.3.0",
+    "commander": "^12.1.0",
     "inquirer": "^9.2.23",
     "yaml": "^2.4.5"
   },
-  "type": "module"
+  "type": "module",
+  "bin": {
+    "hellbell": "dist/index.js"
+  }
 }
